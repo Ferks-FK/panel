@@ -16,17 +16,25 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\CausesActivity;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
+use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\Sanctum;
+use App\Packages\Laravel\Sanctum\NewAccessToken;
 
 /**
  * Class User
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable, LogsActivity, CausesActivity, HasRoles;
+    use HasFactory,Notifiable, LogsActivity, CausesActivity, HasRoles;
+    use HasApiTokens {
+        tokens as private _tokens;
+        createToken as private _createToken;
+    }
 
     private PterodactylClient $pterodactyl;
 
@@ -186,6 +194,25 @@ class User extends Authenticatable implements MustVerifyEmail
     public function discordUser()
     {
         return $this->hasOne(DiscordUser::class);
+    }
+
+    public function tokens(): HasMany
+    {
+        return $this->hasMany(Sanctum::$personalAccessTokenModel);
+    }
+
+    public function createToken(?string $description, array $abilities, ?array $ips): NewAccessToken
+    {
+        $token = $this->tokens()->forceCreate([
+            'token' => $plain = Str::random(ApplicationApi::KEY_LENGTH),
+            'description' => $description,
+            'allowed_ips' => $ips ?? [],
+            'abilities' => $abilities,
+            'user_id' => $this->id,
+            'last_used_at' => null,
+        ]);
+
+        return new NewAccessToken($token, $plain);
     }
 
     public function sendEmailVerificationNotification()

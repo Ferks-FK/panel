@@ -1,67 +1,146 @@
 @extends('layouts.main')
 
 @section('content')
-    <!-- CONTENT HEADER -->
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1>{{__('Application API')}}</h1>
-                </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="{{route('home')}}">{{__('Dashboard')}}</a></li>
-                        <li class="breadcrumb-item"><a href="{{route('admin.api.index')}}">{{__('Application API')}}</a>
-                        </li>
-                        <li class="breadcrumb-item"><a class="text-muted"
-                                                       href="{{route('admin.api.create')}}">{{__('Create')}}</a>
-                        </li>
-                    </ol>
-                </div>
+<!-- CONTENT HEADER -->
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="mb-2 row">
+            <div class="col-sm-6">
+                <h1>{{__('Application API')}}</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="{{route('home')}}">{{__('Dashboard')}}</a></li>
+                    <li class="breadcrumb-item"><a href="{{route('admin.api.index')}}">{{__('Application API')}}</a></li>
+                    <li class="breadcrumb-item"><a class="text-muted" href="{{route('admin.api.create')}}">{{__('Create')}}</a></li>
+                </ol>
             </div>
         </div>
-    </section>
-    <!-- END CONTENT HEADER -->
+    </div>
+</section>
+<!-- END CONTENT HEADER -->
 
-    <!-- MAIN CONTENT -->
-    <section class="content">
-        <div class="container-fluid">
-
+<!-- MAIN CONTENT -->
+<section class="content">
+    <div class="container-fluid">
+        <form action="{{route('admin.api.store')}}" method="POST">
+            @csrf
+            <!-- Card: Description -->
             <div class="row">
-                <div class="col-lg-6">
+                <div class="col-12">
                     <div class="card">
                         <div class="card-body">
-                            <form action="{{route('admin.api.store')}}" method="POST">
-                                @csrf
-
-                                <div class="form-group">
-                                    <label for="memo">{{__('Memo')}}</label>
-                                    <input value="{{old('memo')}}" id="memo" name="memo" type="text"
-                                           class="form-control @error('memo') is-invalid @enderror">
-                                    @error('memo')
+                            <div class="form-group">
+                                <label for="description">{{__('Description')}}</label>
+                                <input value="{{old('description')}}" id="description" name="description" type="text" class="form-control @error('description') is-invalid @enderror">
+                                @error('description')
                                     <div class="invalid-feedback">
                                         {{$message}}
                                     </div>
-                                    @enderror
-                                </div>
-
-                                <div class="form-group text-right">
-                                    <button type="submit" class="btn btn-primary">
-                                        {{__('Submit')}}
-                                    </button>
-                                </div>
-
-                                <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                            </form>
+                                @enderror
+                            </div>
+                            <div class="form-group">
+                                <label for="allowed_ips">{{__('Allowed IPs')}}</label>
+                                <select
+                                    id="allowed_ips"
+                                    name="allowed_ips[]"
+                                    class="form-control select2"
+                                    multiple="multiple"
+                                    data-placeholder="{{__('Type an IP and press Enter')}}"
+                                >
+                                    @if(old('allowed_ips'))
+                                        @foreach(old('allowed_ips') as $ip)
+                                            <option value="{{ $ip }}" selected>{{ $ip }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                @error('allowed_ips')
+                                    <div class="invalid-feedback">
+                                        {{$message}}
+                                    </div>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-        </div>
-    </section>
-    <!-- END CONTENT -->
-
-
-
+            <!-- Card: Permissions -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="abilities-container" class="row">
+                                @foreach($permissions as $key => $permission)
+                                    <div class="mb-4 col-md-6 col-lg-4">
+                                        <div class="form-group">
+                                            <label>
+                                                {{ $key }}
+                                            </label>
+                                            <div class="mt-2">
+                                                <div class="custom-control custom-switch">
+                                                    <input type="checkbox"
+                                                        class="custom-control-input"
+                                                        id="{{ $permission['permission'] }}_read"
+                                                        name="abilities[{{ $permission['permission'] }}][]"
+                                                        value="read"
+                                                        onchange="handleReadChange('{{ $permission['permission'] }}')"
+                                                        {{ in_array('read', old("abilities.{$permission['permission']}", [])) ? 'checked' : '' }}>
+                                                    <label class="custom-control-label" for="{{ $permission['permission'] }}_read">
+                                                        {{__('Read')}}
+                                                    </label>
+                                                </div>
+                                                <div class="mt-2 custom-control custom-switch">
+                                                    <input type="checkbox"
+                                                        class="custom-control-input"
+                                                        id="{{ $permission['permission'] }}_write"
+                                                        name="abilities[{{ $permission['permission'] }}][]"
+                                                        value="write"
+                                                        onchange="handleWriteChange('{{ $permission['permission'] }}')"
+                                                        {{ in_array('write', old("abilities.{$permission['permission']}", [])) ? 'checked' : '' }}>
+                                                    <label class="custom-control-label" for="{{ $permission['permission'] }}_write">
+                                                        {{__('Write')}}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <!-- Save Button -->
+                            <div class="row">
+                                <div class="text-right col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        {{__('Save')}}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+<!-- END CONTENT -->
+    <script>
+        $(document).ready(function() {
+            $('#allowed_ips').select2({
+                tags: true,
+                tokenSeparators: [',', ' '],
+                width: '100%',
+                createTag: function(params) {
+                    var term = $.trim(params.term);
+                    if (term === '') {
+                        return null;
+                    }
+                    return {
+                        id: term,
+                        text: term,
+                        newTag: true
+                    };
+                }
+            });
+        });
+    </script>
 @endsection

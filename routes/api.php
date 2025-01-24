@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('api.token')->group(function () {
+Route::group([], function () {
     Route::patch('/users/{user}/increment', [UserController::class, 'increment']);
     Route::patch('/users/{user}/decrement', [UserController::class, 'decrement']);
     Route::patch('/users/{user}/suspend', [UserController::class, 'suspend']);

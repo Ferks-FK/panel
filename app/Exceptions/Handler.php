@@ -2,16 +2,13 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class Handler extends ExceptionHandler
 {
-
-
     /**
      * A list of exception types with their corresponding custom log levels.
      *
@@ -72,6 +69,12 @@ class Handler extends ExceptionHandler
                     $exception->getStatusCode()
                 );
             }
+        }
+
+        if ($exception instanceof AuthorizationException) {
+            return response()->json([
+                'message' => 'You are not authorized to perform this action.'
+            ], 403);
         }
 
         // Fallback to default behavior for non-HTTP exceptions

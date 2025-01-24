@@ -6,6 +6,8 @@ use App\Classes\Pterodactyl;
 use App\Classes\PterodactylClient;
 use App\Events\UserUpdateCreditsEvent;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Application\Users\CreateUserRequest;
+use App\Http\Requests\Api\Application\Users\GetUsersRequest;
 use App\Models\DiscordUser;
 use App\Models\User;
 use App\Notifications\ReferralNotification;
@@ -45,7 +47,7 @@ class UserController extends Controller
      * @param  Request  $request
      * @return LengthAwarePaginator
      */
-    public function index(Request $request)
+    public function index(GetUsersRequest $request)
     {
         $query = QueryBuilder::for(User::class)
             ->allowedIncludes(self::ALLOWED_INCLUDES)
@@ -271,13 +273,9 @@ class UserController extends Controller
     /**
      * @throws ValidationException
      */
-    public function store(Request $request, UserSettings $userSettings)
+    public function store(CreateUserRequest $request, UserSettings $userSettings)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:30', 'min:4', 'alpha_num', 'unique:users'],
-            'email' => ['required', 'string', 'email', 'max:64', 'unique:users'],
-            'password' => ['required', 'string', 'min:8', 'max:191'],
-        ]);
+        $data = $request->validated();
 
         // Prevent the creation of new users via API if this is enabled.
         if (! $userSettings->creation_enabled) {
@@ -287,11 +285,11 @@ class UserController extends Controller
         }
 
         $user = User::create([
-            'name' => $request->input('name'),
-            'email' => $request->input('email'),
+            'name' => $data['name'],
+            'email' => $data['email'],
             'credits' => config('SETTINGS::USER:INITIAL_CREDITS', 150),
             'server_limit' => config('SETTINGS::USER:INITIAL_SERVER_LIMIT', 1),
-            'password' => Hash::make($request->input('password')),
+            'password' => Hash::make($data['password']),
             'referral_code' => $this->createReferralCode(),
         ]);
 
@@ -301,7 +299,7 @@ class UserController extends Controller
             'email' => $user->email,
             'first_name' => $user->name,
             'last_name' => $user->name,
-            'password' => $request->input('password'),
+            'password' => $data['password'],
             'root_admin' => false,
             'language' => 'en',
         ]);
@@ -318,7 +316,7 @@ class UserController extends Controller
             'pterodactyl_id' => $response->json()['attributes']['id'],
         ]);
         //INCREMENT REFERRAL-USER CREDITS
-        if (! empty($request->input('referral_code'))) {
+        if (!empty($request->input('referral_code'))) {
             $ref_code = $request->input('referral_code');
             $new_user = $user->id;
             if ($ref_user = User::query()->where('referral_code', '=', $ref_code)->first()) {

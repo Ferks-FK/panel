@@ -18,6 +18,7 @@ class ApplicationApiController extends Controller
 {
     const READ_PERMISSION = "admin.api.read";
     const WRITE_PERMISSION = "admin.api.write";
+
     /**
      * Display a listing of the resource.
      *
@@ -41,7 +42,9 @@ class ApplicationApiController extends Controller
     {
         $this->checkPermission(self::WRITE_PERMISSION);
 
-        return view('admin.api.create');
+        $permissions = config('permissions_api');
+
+        return view('admin.api.create', compact('permissions'));
     }
 
     /**
@@ -52,15 +55,26 @@ class ApplicationApiController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'memo' => 'nullable|string|max:60',
+        $data = $request->validate([
+            'description' => 'required|string|max:255',
+            'allowed_ips' => 'nullable|array',
+            'abilities' => 'required|array',
+            'abilities.*' => 'array'
         ]);
 
-        ApplicationApi::create([
-            'memo' => $request->input('memo'),
-        ]);
+        $abilities = [];
 
-        return redirect()->route('admin.api.index')->with('success', __('api key created!'));
+        foreach ($data['abilities'] as $resource => $permissions) {
+            foreach ($permissions as $permission) {
+                $abilities[] = "{$resource}:{$permission}";
+            }
+        }
+
+        $token = $request->user()->createToken($data['description'], $abilities, $data['allowed_ips'] ?? []);
+
+        return redirect()->route('admin.api.index')
+            ->with('success', __('API token created successfully'))
+            ->with('plain_text_token', $token->plainTextToken);
     }
 
     /**
@@ -82,6 +96,8 @@ class ApplicationApiController extends Controller
      */
     public function edit(ApplicationApi $applicationApi)
     {
+        $user = auth()->user();
+
         $this->checkPermission(self::WRITE_PERMISSION);
         return view('admin.api.edit', [
             'applicationApi' => $applicationApi,
@@ -132,13 +148,16 @@ class ApplicationApiController extends Controller
         $query = ApplicationApi::query();
 
         return datatables($query)
+            ->editColumn('id', function (ApplicationApi $apiKey) {
+                return $apiKey->id;
+            })
             ->addColumn('actions', function (ApplicationApi $apiKey) {
                 return '
-                <a data-content="'.__('Edit').'" data-toggle="popover" data-trigger="hover" data-placement="top"  href="'.route('admin.api.edit', $apiKey->token).'" class="btn btn-sm btn-info mr-1"><i class="fas fa-pen"></i></a>
-                <form class="d-inline" onsubmit="return submitResult();" method="post" action="'.route('admin.api.destroy', $apiKey->token).'">
+                <a data-content="'.__('Edit').'" data-toggle="popover" data-trigger="hover" data-placement="top"  href="'.route('admin.api.edit', $apiKey->id).'" class="mr-1 btn btn-sm btn-info"><i class="fas fa-pen"></i></a>
+                <form class="d-inline" onsubmit="return submitResult();" method="post" action="'.route('admin.api.destroy', $apiKey->id).'">
                             '.csrf_field().'
                             '.method_field('DELETE').'
-                           <button data-content="'.__('Delete').'" data-toggle="popover" data-trigger="hover" data-placement="top" class="btn btn-sm btn-danger mr-1"><i class="fas fa-trash"></i></button>
+                           <button data-content="'.__('Delete').'" data-toggle="popover" data-trigger="hover" data-placement="top" class="mr-1 btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
                        </form>
                 ';
             })

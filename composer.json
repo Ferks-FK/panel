@@ -19,6 +19,7 @@
         "josiasmontag/laravel-recaptchav3": "^1.0",
         "kkomelin/laravel-translatable-string-exporter": "^1.22",
         "laravel/framework": "^11.32",
+        "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10",
         "laravel/ui": "^4.5.2",
         "laraveldaily/laravel-invoices": "^4.0.0",

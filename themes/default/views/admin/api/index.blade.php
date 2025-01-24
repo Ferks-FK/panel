@@ -4,7 +4,7 @@
     <!-- CONTENT HEADER -->
     <section class="content-header">
         <div class="container-fluid">
-            <div class="row mb-2">
+            <div class="mb-2 row">
                 <div class="col-sm-6">
                     <h1>{{__('Application API')}}</h1>
                 </div>
@@ -27,9 +27,9 @@
 
                 <div class="card-header">
                     <div class="d-flex justify-content-between">
-                        <h5 class="card-title"><i class="fa fa-gamepad mr-2"></i>{{__('Application API')}}</h5>
+                        <h5 class="card-title"><i class="mr-2 fa fa-gamepad"></i>{{__('Application API')}}</h5>
                         <a href="{{route('admin.api.create')}}" class="btn btn-sm btn-primary"><i
-                                class="fas fa-plus mr-1"></i>{{__('Create new')}}</a>
+                                class="mr-1 fas fa-plus"></i>{{__('Create new')}}</a>
                     </div>
                 </div>
 
@@ -38,8 +38,9 @@
                     <table id="datatable" class="table table-striped">
                         <thead>
                         <tr>
+                            <th>{{ __('ID') }}</th>
                             <th>{{__('Token')}}</th>
-                            <th>{{__('Memo')}}</th>
+                            <th>{{__('Description')}}</th>
                             <th>{{__('Last used')}}</th>
                             <th></th>
                         </tr>
@@ -73,10 +74,11 @@
                 ajax: "{{route('admin.api.datatable')}}",
                 order: [[ 2, "desc" ]],
                 columns: [
-                    {data: 'token'},
-                    {data: 'memo'},
+                    {data: 'id'},
+                    {data: 'token', sortable: false},
+                    {data: 'description', sortable: false},
                     {data: 'last_used'},
-                    {data: 'actions' , sortable : false},
+                    {data: 'actions', sortable: false},
                 ],
                 fnDrawCallback: function( oSettings ) {
                     $('[data-toggle="popover"]').popover();

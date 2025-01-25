@@ -204,7 +204,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function createToken(?string $description, array $abilities, ?array $ips): NewAccessToken
     {
         $token = $this->tokens()->forceCreate([
-            'token' => $plain = Str::random(ApplicationApi::KEY_LENGTH),
+            'token' => encrypt($plain = ApplicationApi::KEY_PREFIX . Str::random(ApplicationApi::KEY_LENGTH)),
             'description' => $description,
             'allowed_ips' => $ips ?? [],
             'abilities' => $abilities,

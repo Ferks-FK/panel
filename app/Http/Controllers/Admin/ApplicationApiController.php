@@ -55,6 +55,8 @@ class ApplicationApiController extends Controller
      */
     public function store(Request $request)
     {
+        $this->checkPermission(self::WRITE_PERMISSION);
+
         $data = $request->validate([
             'description' => 'required|string|max:255',
             'allowed_ips' => 'nullable|array',
@@ -70,56 +72,10 @@ class ApplicationApiController extends Controller
             }
         }
 
-        $token = $request->user()->createToken($data['description'], $abilities, $data['allowed_ips'] ?? []);
+        $request->user()->createToken($data['description'], $abilities, $data['allowed_ips'] ?? []);
 
         return redirect()->route('admin.api.index')
-            ->with('success', __('API token created successfully'))
-            ->with('plain_text_token', $token->plainTextToken);
-    }
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  ApplicationApi  $applicationApi
-     * @return Response
-     */
-    public function show(ApplicationApi $applicationApi)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  ApplicationApi  $applicationApi
-     * @return Application|Factory|View|Response
-     */
-    public function edit(ApplicationApi $applicationApi)
-    {
-        $user = auth()->user();
-
-        $this->checkPermission(self::WRITE_PERMISSION);
-        return view('admin.api.edit', [
-            'applicationApi' => $applicationApi,
-        ]);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  Request  $request
-     * @param  ApplicationApi  $applicationApi
-     * @return RedirectResponse
-     */
-    public function update(Request $request, ApplicationApi $applicationApi)
-    {
-        $request->validate([
-            'memo' => 'nullable|string|max:60',
-        ]);
-
-        $applicationApi->update($request->all());
-
-        return redirect()->route('admin.api.index')->with('success', __('api key updated!'));
+            ->with('success', __('API token created successfully'));
     }
 
     /**
@@ -153,7 +109,6 @@ class ApplicationApiController extends Controller
             })
             ->addColumn('actions', function (ApplicationApi $apiKey) {
                 return '
-                <a data-content="'.__('Edit').'" data-toggle="popover" data-trigger="hover" data-placement="top"  href="'.route('admin.api.edit', $apiKey->id).'" class="mr-1 btn btn-sm btn-info"><i class="fas fa-pen"></i></a>
                 <form class="d-inline" onsubmit="return submitResult();" method="post" action="'.route('admin.api.destroy', $apiKey->id).'">
                             '.csrf_field().'
                             '.method_field('DELETE').'
@@ -162,10 +117,12 @@ class ApplicationApiController extends Controller
                 ';
             })
             ->editColumn('token', function (ApplicationApi $apiKey) {
-                return "<code>{$apiKey->token}</code>";
+                $token = decrypt($apiKey->token);
+
+                return "<code>{$token}</code>";
             })
-            ->editColumn('last_used', function (ApplicationApi $apiKey) {
-                return $apiKey->last_used ? $apiKey->last_used->diffForHumans() : '';
+            ->editColumn('last_used_at', function (ApplicationApi $apiKey) {
+                return $apiKey->last_used_at ? $apiKey->last_used_at->diffForHumans() : '';
             })
             ->rawColumns(['actions', 'token'])
             ->make();

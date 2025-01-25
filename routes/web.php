@@ -197,7 +197,7 @@ Route::middleware(['auth', 'checkSuspended'])->group(function () {
         Route::get('api/datatable', [ApplicationApiController::class, 'datatable'])->name('api.datatable');
         Route::resource('api', ApplicationApiController::class)->parameters([
             'api' => 'applicationApi',
-        ]);
+        ])->except(['show', 'edit', 'update']);
 
         //ticket moderation
         Route::get('ticket', [AdminTicketsController::class, 'index'])->name('ticket.index');

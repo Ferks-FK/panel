@@ -77,7 +77,7 @@
                     {data: 'id'},
                     {data: 'token', sortable: false},
                     {data: 'description', sortable: false},
-                    {data: 'last_used'},
+                    {data: 'last_used_at'},
                     {data: 'actions', sortable: false},
                 ],
                 fnDrawCallback: function( oSettings ) {

@@ -6,12 +6,14 @@ use Hidehalo\Nanoid\Client;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class ApplicationApi extends Model
 {
     use HasFactory;
 
-    const KEY_LENGTH = 32;
+    const KEY_PREFIX = 'cpgg_';
+    const KEY_LENGTH = 48;
 
     /**
      * The attributes that are mass assignable.
@@ -50,22 +52,20 @@ class ApplicationApi extends Model
      */
     public static function findToken(string $token): ?self
     {
-        $token = static::where('token', $token)->first();
+        $apiKeys = static::all();
 
-        if (!is_null($token) && $token->token) {
-            return $token;
+        foreach ($apiKeys as $apiKey) {
+            try {
+                if (decrypt($apiKey->token) === $token) {
+                    return $apiKey;
+                }
+            } catch (\Exception $e) {
+                logger()->error($e->getMessage());
+                continue;
+            }
         }
 
         return null;
-    }
-
-    public static function boot()
-    {
-        parent::boot();
-
-        static::creating(function (ApplicationApi $applicationApi) {
-            $applicationApi->token = Str::random(self::KEY_LENGTH);
-        });
     }
 
     public function updateLastUsed()

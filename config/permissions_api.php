@@ -1,19 +1,9 @@
 <?php
 
 return [
-    'Users' => [
-        'permission' => 'users',
-    ],
-    'Servers' => [
-        'permission' => 'servers',
-    ],
-    'Vouchers' => [
-        'permission' => 'vouchers',
-    ],
-    'Roles' => [
-        'permission' => 'roles',
-    ],
-    'Notifications' => [
-        'permission' => 'notifications',
-    ],
+    'Users' => 'users',
+    'Servers' => 'servers',
+    'Vouchers' => 'vouchers',
+    'Roles' => 'roles',
+    'Notifications' => 'notifications',
 ];

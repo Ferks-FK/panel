@@ -20,13 +20,13 @@ return new class extends Migration
         Schema::table('application_apis', function (Blueprint $table) {
             $table->dropPrimary();
             $table->id()->first();
+            $table->text('token')->change();
             $table->renameColumn('memo', 'description');
             $table->renameColumn('last_used', 'last_used_at');
             $table->string('description')->nullable(false)->change();
             $table->json('allowed_ips')->nullable()->after('description');
             $table->json('abilities')->after('allowed_ips');
             $table->foreignId('user_id')->after('allowed_ips')->constrained('users')->cascadeOnDelete();
-
         });
     }
 
@@ -39,6 +39,7 @@ return new class extends Migration
             $table->dropPrimary();
             DB::statement('ALTER TABLE application_apis MODIFY id BIGINT UNSIGNED NOT NULL');
             $table->dropColumn('id');
+            $table->string('token', 191)->change();
             $table->primary('token');
             $table->renameColumn('description', 'memo');
             $table->renameColumn('last_used_at', 'last_used');

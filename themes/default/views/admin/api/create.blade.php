@@ -74,31 +74,29 @@
                                 @foreach($permissions as $key => $permission)
                                     <div class="mb-4 col-md-6 col-lg-4">
                                         <div class="form-group">
-                                            <label>
-                                                {{ $key }}
-                                            </label>
+                                            <label>{{ $key }}</label>
                                             <div class="mt-2">
                                                 <div class="custom-control custom-switch">
                                                     <input type="checkbox"
                                                         class="custom-control-input"
-                                                        id="{{ $permission['permission'] }}_read"
-                                                        name="abilities[{{ $permission['permission'] }}][]"
+                                                        id="{{ $permission }}_read"
+                                                        name="abilities[{{ $permission }}][]"
                                                         value="read"
-                                                        onchange="handleReadChange('{{ $permission['permission'] }}')"
-                                                        {{ in_array('read', old("abilities.{$permission['permission']}", [])) ? 'checked' : '' }}>
-                                                    <label class="custom-control-label" for="{{ $permission['permission'] }}_read">
+                                                        onchange="handleReadChange('{{ $permission }}')"
+                                                        {{ in_array('read', old("abilities.{$permission}", [])) ? 'checked' : '' }}>
+                                                    <label class="custom-control-label" for="{{ $permission }}_read">
                                                         {{__('Read')}}
                                                     </label>
                                                 </div>
                                                 <div class="mt-2 custom-control custom-switch">
                                                     <input type="checkbox"
                                                         class="custom-control-input"
-                                                        id="{{ $permission['permission'] }}_write"
-                                                        name="abilities[{{ $permission['permission'] }}][]"
+                                                        id="{{ $permission }}_write"
+                                                        name="abilities[{{ $permission }}][]"
                                                         value="write"
-                                                        onchange="handleWriteChange('{{ $permission['permission'] }}')"
-                                                        {{ in_array('write', old("abilities.{$permission['permission']}", [])) ? 'checked' : '' }}>
-                                                    <label class="custom-control-label" for="{{ $permission['permission'] }}_write">
+                                                        onchange="handleWriteChange('{{ $permission }}')"
+                                                        {{ in_array('write', old("abilities.{$permission}", [])) ? 'checked' : '' }}>
+                                                    <label class="custom-control-label" for="{{ $permission }}_write">
                                                         {{__('Write')}}
                                                     </label>
                                                 </div>

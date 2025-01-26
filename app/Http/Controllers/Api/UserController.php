@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Classes\Pterodactyl;
 use App\Classes\PterodactylClient;
 use App\Events\UserUpdateCreditsEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Application\Users\CreateUserRequest;
 use App\Http\Requests\Api\Application\Users\GetUsersRequest;
-use App\Models\DiscordUser;
+use App\Http\Requests\Api\Application\Users\UpdateUserRequest;
 use App\Models\User;
 use App\Notifications\ReferralNotification;
 use App\Settings\PterodactylSettings;
+use App\Settings\ReferralSettings;
 use App\Settings\UserSettings;
 use Carbon\Carbon;
 use Illuminate\Contracts\Foundation\Application;
@@ -20,31 +20,33 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\QueryBuilder\QueryBuilder;
 
 class UserController extends Controller
 {
-    private $pterodactyl;
+    const ALLOWED_INCLUDES = ['servers', 'notifications', 'payments', 'vouchers', 'roles', 'discordUser'];
+    const ALLOWED_FILTERS = ['name', 'server_limit', 'email', 'pterodactyl_id', 'suspended'];
 
-    public function __construct(PterodactylSettings $ptero_settings)
+    private $pterodactyl;
+    private $userSettings;
+    private $referralSettings;
+
+    public function __construct(PterodactylSettings $ptero_settings, UserSettings $userSettings, ReferralSettings $referralSettings)
     {
         $this->pterodactyl = new PterodactylClient($ptero_settings);
+        $this->userSettings = $userSettings;
+        $this->referralSettings = $referralSettings;
     }
-    const ALLOWED_INCLUDES = ['servers', 'notifications', 'payments', 'vouchers', 'roles', 'discordUser'];
-
-    const ALLOWED_FILTERS = ['name', 'server_limit', 'email', 'pterodactyl_id', 'suspended'];
 
     /**
      * Display a listing of the resource.
      *
-     * @param  Request  $request
+     * @param  GetUsersRequest  $request
      * @return LengthAwarePaginator
      */
     public function index(GetUsersRequest $request)
@@ -59,55 +61,40 @@ class UserController extends Controller
     /**
      * Display the specified resource.
      *
+     * @param  GetUsersRequest  $request
      * @param  int  $id
      * @return User|Builder|Collection|Model
      */
-    public function show(int $id)
+    public function show(GetUsersRequest $request, int $id)
     {
-        $discordUser = DiscordUser::find($id);
-        $userQuery = $discordUser
-            ? $discordUser->user()->getQuery()
-            : User::query();
-
-        $query = QueryBuilder::for($userQuery)
-            ->with('discordUser')
+        $user = QueryBuilder::for(User::class)
             ->allowedIncludes(self::ALLOWED_INCLUDES)
-            ->where('users.id', '=', $id)
-            ->orWhereHas('discordUser', function (Builder $builder) use ($id) {
-                $builder->where('id', '=', $id);
-            });
+            ->where('id', $id)
+            ->firstOrFail();
 
-        return $query->firstOrFail();
+        return response()->json($user);
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  Request  $request
+     * @param  UpdateUserRequest  $request
      * @param  int  $id
      * @return User
      */
-    public function update(Request $request, int $id)
+    public function update(UpdateUserRequest $request, int $id)
     {
-        $discordUser = DiscordUser::find($id);
-        $user = $discordUser ? $discordUser->user : User::findOrFail($id);
+        $data = $request->validated();
 
-        $request->validate([
-            'name' => 'sometimes|string|min:4|max:30',
-            'email' => 'sometimes|string|email',
-            'credits' => 'sometimes|numeric|min:0|max:1000000',
-            'server_limit' => 'sometimes|numeric|min:0|max:1000000',
-        ]);
-
-        event(new UserUpdateCreditsEvent($user));
+        $user = User::findOrFail($id);
 
         //Update Users Password on Pterodactyl
         //Username,Mail,First and Lastname are required aswell
-        $response = $this->pterodactyl->application->post('/application/users/'.$user->pterodactyl_id, [
-            'username' => $request->name,
-            'first_name' => $request->name,
-            'last_name' => $request->name,
-            'email' => $request->email,
+        $response = $this->pterodactyl->application->patch('/application/users/'. $user->pterodactyl_id, [
+            'username' => $data['name'],
+            'first_name' => $data['name'],
+            'last_name' => $data['name'],
+            'email' => $data['email'],
         ]);
 
         if ($response->failed()) {
@@ -116,143 +103,30 @@ class UserController extends Controller
                 'pterodactyl_error_status' => $response->toException()->getCode(),
             ]);
         }
-        if($request->has("role")){
-            $collectedRoles = collect($request->role)->map(fn($val)=>(int)$val);
-            $user->syncRoles($collectedRoles);
+
+        if (isset($data['role'])) {
+            $user->syncRoles([$data['role']]);
+
+            unset($data['role']);
         }
-        $user->update($request->except('role'));
 
-        return $user;
-    }
-
-    /**
-     * increments the users credits or/and server_limit
-     *
-     * @param  Request  $request
-     * @param  int  $id
-     * @return User
-     *
-     * @throws ValidationException
-     */
-    public function increment(Request $request, int $id)
-    {
-        $discordUser = DiscordUser::find($id);
-        $user = $discordUser ? $discordUser->user : User::findOrFail($id);
-
-        $request->validate([
-            'credits' => 'sometimes|numeric|min:0|max:1000000',
-            'server_limit' => 'sometimes|numeric|min:0|max:1000000',
-        ]);
-
-        if ($request->credits) {
-            if ($user->credits + $request->credits >= 99999999) {
-                throw ValidationException::withMessages([
-                    'credits' => "You can't add this amount of credits because you would exceed the credit limit",
-                ]);
+        if (isset($data['suspended'])) {
+            if ($data['suspended'] && !$user->isSuspended()) {
+                $user->suspend();
+            } elseif (!$data['suspended'] && $user->isSuspended()) {
+                $user->unSuspend();
             }
+
+            unset($data['suspended']);
+        }
+
+        $user->update($data);
+
+        if(isset($data['credits'])) {
             event(new UserUpdateCreditsEvent($user));
-            $user->increment('credits', $request->credits);
         }
 
-        if ($request->server_limit) {
-            if ($user->server_limit + $request->server_limit >= 2147483647) {
-                throw ValidationException::withMessages([
-                    'server_limit' => 'You cannot add this amount of servers because it would exceed the server limit.',
-                ]);
-            }
-            $user->increment('server_limit', $request->server_limit);
-        }
-
-        return $user;
-    }
-
-    /**
-     * decrements the users credits or/and server_limit
-     *
-     * @param  Request  $request
-     * @param  int  $id
-     * @return User
-     *
-     * @throws ValidationException
-     */
-    public function decrement(Request $request, int $id)
-    {
-        $discordUser = DiscordUser::find($id);
-        $user = $discordUser ? $discordUser->user : User::findOrFail($id);
-
-        $request->validate([
-            'credits' => 'sometimes|numeric|min:0|max:1000000',
-            'server_limit' => 'sometimes|numeric|min:0|max:1000000',
-        ]);
-
-        if ($request->credits) {
-            if ($user->credits - $request->credits < 0) {
-                throw ValidationException::withMessages([
-                    'credits' => "You can't remove this amount of credits because you would exceed the minimum credit limit",
-                ]);
-            }
-            $user->decrement('credits', $request->credits);
-        }
-
-        if ($request->server_limit) {
-            if ($user->server_limit - $request->server_limit < 0) {
-                throw ValidationException::withMessages([
-                    'server_limit' => 'You cannot remove this amount of servers because it would exceed the minimum server.',
-                ]);
-            }
-            $user->decrement('server_limit', $request->server_limit);
-        }
-
-        return $user;
-    }
-
-    /**
-     * Suspends the user
-     *
-     * @param  Request  $request
-     * @param  int  $id
-     * @return bool
-     *
-     * @throws ValidationException
-     */
-    public function suspend(Request $request, int $id)
-    {
-        $discordUser = DiscordUser::find($id);
-        $user = $discordUser ? $discordUser->user : User::findOrFail($id);
-
-        if ($user->isSuspended()) {
-            throw ValidationException::withMessages([
-                'error' => 'The user is already suspended',
-            ]);
-        }
-        $user->suspend();
-
-        return $user;
-    }
-
-    /**
-     * Unsuspend the user
-     *
-     * @param  Request  $request
-     * @param  int  $id
-     * @return bool
-     *
-     * @throws ValidationException
-     */
-    public function unsuspend(Request $request, int $id)
-    {
-        $discordUser = DiscordUser::find($id);
-        $user = $discordUser ? $discordUser->user : User::findOrFail($id);
-
-        if (! $user->isSuspended()) {
-            throw ValidationException::withMessages([
-                'error' => 'You cannot unsuspend an User who is not suspended.',
-            ]);
-        }
-
-        $user->unSuspend();
-
-        return $user;
+        return response()->json($user);
     }
 
     /**
@@ -273,12 +147,12 @@ class UserController extends Controller
     /**
      * @throws ValidationException
      */
-    public function store(CreateUserRequest $request, UserSettings $userSettings)
+    public function store(CreateUserRequest $request)
     {
         $data = $request->validated();
 
         // Prevent the creation of new users via API if this is enabled.
-        if (! $userSettings->creation_enabled) {
+        if (!$this->userSettings->creation_enabled) {
             throw ValidationException::withMessages([
                 'error' => 'The creation of new users has been blocked by the system administrator.',
             ]);
@@ -287,10 +161,11 @@ class UserController extends Controller
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'credits' => config('SETTINGS::USER:INITIAL_CREDITS', 150),
-            'server_limit' => config('SETTINGS::USER:INITIAL_SERVER_LIMIT', 1),
-            'password' => Hash::make($data['password']),
+            'credits' => $data['credits'] ?? $this->userSettings->initial_credits,
+            'server_limit' => $data['server_limit'] ?? $this->userSettings->initial_server_limit,
+            'password' => $data['password'],
             'referral_code' => $this->createReferralCode(),
+            'pterodactyl_id' => Str::uuid(),
         ]);
 
         $response = $this->pterodactyl->application->post('/application/users', [
@@ -315,13 +190,17 @@ class UserController extends Controller
         $user->update([
             'pterodactyl_id' => $response->json()['attributes']['id'],
         ]);
+
+        $user->syncRoles([$data['role']]);
+
         //INCREMENT REFERRAL-USER CREDITS
-        if (!empty($request->input('referral_code'))) {
-            $ref_code = $request->input('referral_code');
+        if (isset($data['referral_code'])) {
+            $ref_user = User::query()->where('referral_code', '=', $data['referral_code'])->first();
             $new_user = $user->id;
-            if ($ref_user = User::query()->where('referral_code', '=', $ref_code)->first()) {
-                if (config('SETTINGS::REFERRAL:MODE') == 'register' || config('SETTINGS::REFERRAL:MODE') == 'both') {
-                    $ref_user->increment('credits', config('SETTINGS::REFERRAL::REWARD'));
+
+            if ($ref_user) {
+                if ($this->referralSettings->mode == 'register' || $this->referralSettings->mode == 'both') {
+                    $ref_user->increment('credits', $this->referralSettings->reward);
                     $ref_user->notify(new ReferralNotification($ref_user->id, $new_user));
                 }
                 //INSERT INTO USER_REFERRALS TABLE
@@ -333,9 +212,10 @@ class UserController extends Controller
                 ]);
             }
         }
+
         $user->sendEmailVerificationNotification();
 
-        return $user;
+        return response()->json($user);
     }
 
     /**
@@ -346,11 +226,10 @@ class UserController extends Controller
      */
     public function destroy(int $id)
     {
-        $discordUser = DiscordUser::find($id);
-        $user = $discordUser ? $discordUser->user : User::findOrFail($id);
+        $user = User::findOrFail($id);
 
         $user->delete();
 
-        return response($user, 200);
+        return response()->json($user);
     }
 }

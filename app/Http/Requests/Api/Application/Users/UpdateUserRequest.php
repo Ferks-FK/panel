@@ -3,9 +3,9 @@
 namespace App\Http\Requests\Api\Application\Users;
 
 use App\Helpers\ApiAcl;
-use App\Http\Requests\Api\Application\BaseApplicationApiRequest;
+use Illuminate\Foundation\Http\FormRequest;
 
-class CreateUserRequest extends BaseApplicationApiRequest
+class UpdateUserRequest extends FormRequest
 {
     protected ?string $resource = 'users';
 
@@ -19,13 +19,13 @@ class CreateUserRequest extends BaseApplicationApiRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:30|min:4|alpha_num|unique:users',
-            'email' => 'required|string|email|max:64|unique:users',
-            'password' => 'required|string|min:8|max:191',
-            'role' => 'required|string|exists:roles,name',
+            'name' => 'required|string|min:4|max:30',
+            'email' => 'required|string|email',
             'credits' => 'sometimes|numeric|min:0|max:1000000',
             'server_limit' => 'sometimes|numeric|min:0|max:1000000',
-            'referral_code' => 'sometimes|string|exists:users,referral_code',
+            'role' => 'sometimes|string|exists:roles,name',
+            'password' => 'sometimes|string|min:8|max:191',
+            'suspended' => 'sometimes|boolean',
         ];
     }
 }

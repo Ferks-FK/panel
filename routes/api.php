@@ -19,10 +19,6 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::group([], function () {
-    Route::patch('/users/{user}/increment', [UserController::class, 'increment']);
-    Route::patch('/users/{user}/decrement', [UserController::class, 'decrement']);
-    Route::patch('/users/{user}/suspend', [UserController::class, 'suspend']);
-    Route::patch('/users/{user}/unsuspend', [UserController::class, 'unsuspend']);
     Route::resource('users', UserController::class)->except(['create']);
 
     Route::patch('/servers/{server}/suspend', [ServerController::class, 'suspend']);

@@ -99,7 +99,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_seen' => 'datetime',
         'credits' => 'float',
         'server_limit' => 'float',
-        'email_verified_reward' => 'boolean'
+        'email_verified_reward' => 'boolean',
+        'password' => 'hashed'
     ];
 
     public function __construct()

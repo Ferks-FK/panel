@@ -6,6 +6,7 @@ use App\Classes\PterodactylClient;
 use App\Events\UserUpdateCreditsEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Application\Users\CreateUserRequest;
+use App\Http\Requests\Api\Application\Users\DeleteUserRequest;
 use App\Http\Requests\Api\Application\Users\GetUsersRequest;
 use App\Http\Requests\Api\Application\Users\UpdateUserRequest;
 use App\Models\User;
@@ -221,10 +222,11 @@ class UserController extends Controller
     /**
      * Remove the specified resource from storage.
      *
+     * @param  DeleteUserRequest  $request
      * @param  int  $id
      * @return Application|Response|ResponseFactory
      */
-    public function destroy(int $id)
+    public function destroy(DeleteUserRequest $request, int $id)
     {
         $user = User::findOrFail($id);
 

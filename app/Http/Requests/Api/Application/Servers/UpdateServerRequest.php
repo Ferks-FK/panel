@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Requests\Api\Application\Users;
+namespace App\Http\Requests\Api\Application\Servers;
 
 use App\Helpers\ApiAcl;
 use App\Http\Requests\Api\Application\BaseApplicationApiRequest;
 
-class UpdateUserRequest extends BaseApplicationApiRequest
+class UpdateServerRequest extends BaseApplicationApiRequest
 {
-    protected ?string $resource = 'users';
+    protected ?string $resource = 'servers';
 
     protected string $ability = ApiAcl::WRITE;
 
@@ -20,12 +20,10 @@ class UpdateUserRequest extends BaseApplicationApiRequest
     {
         return [
             'name' => 'required|string|min:4|max:30',
-            'email' => 'required|string|email',
-            'credits' => 'sometimes|numeric|min:0|max:1000000',
-            'server_limit' => 'sometimes|numeric|min:0|max:1000000',
-            'role' => 'sometimes|string|exists:roles,name',
-            'password' => 'sometimes|string|min:8|max:191',
+            'description' => 'sometimes|string|nullable|min:4|max:191',
             'suspended' => 'sometimes|boolean',
+            'external_id' => 'sometimes|string|nullable|min:4|max:191',
+            'user_id' => 'required|numeric|exists:users,id',
         ];
     }
 }

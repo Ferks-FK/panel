@@ -87,6 +87,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'role'
     ];
 
     /**
@@ -100,7 +101,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'credits' => 'float',
         'server_limit' => 'float',
         'email_verified_reward' => 'boolean',
-        'password' => 'hashed'
+        'password' => 'hashed',
+        'suspended' => 'boolean',
     ];
 
     public function __construct()
